@@ -284,7 +284,7 @@ int main(int argc, char** argv){
 			}
 		}
 
-		if(first){
+		if(first){  //第一帧的话要额外输出temp
 			bool tof_suc2 = tof.estimateGroundplane(tof_data, camModel_tof);
 			if(tof_suc2){
 				neins = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).n;
@@ -307,9 +307,9 @@ int main(int argc, char** argv){
 			n_viso.val[i][0]=n_previous(i);
 		}
 
-		bool vo_suc = visoNew.process(Irgb_undist.data, dimsRGB, n_viso, h_previous);
+		bool vo_suc = visoNew.process(Irgb_undist.data, dimsRGB, n_viso, h_previous); // 判断是否用VO
 
-		if (vo_suc){		// VO
+		if (vo_suc){		// VO,这里决定是否要用到VO
 
 			cout<<" *** New Pose ***"<<endl;
 			poseVO = poseVO * Matrix::inv(visoNew.getMotion());
@@ -323,14 +323,14 @@ int main(int argc, char** argv){
 			n_temp = pose_temp * n_previous;
 			poseVO = correctPose(poseVO, n_temp, neins);
 
-			// Male den Weg
+			// Male den Weg 画轨迹图，就是把计算出来的点变成白色
 			cv::Point p;
 			p.x=(poseVO.val[0][3]);
 			p.y=(poseVO.val[2][3]);
 			male_track(p, wegVO);
 
 		}
-		if(!first)
+		if(!first)  //从第二帧开始计算
 			all_pos<<i<<" "<<poseVO.val[0][3]<<" "<<poseVO.val[1][3]<<" "<<poseVO.val[2][3]<<std::endl;
 
 
@@ -339,7 +339,7 @@ int main(int argc, char** argv){
 		double h_akt;
 		bool tof_suc = tof.estimateGroundplane(tof_data, camModel_tof);
 		TofGround::planeHN temp;
-		if(tof_suc && !first){
+		if(tof_suc && !first){ //使用tof计算
 			n_akt = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).n;
 			h_akt = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).d;
 
@@ -355,7 +355,7 @@ int main(int argc, char** argv){
 		pose_step(2,0)=poseVO.val[2][0];	pose_step(2,1)=poseVO.val[2][1];	pose_step(2,2)=poseVO.val[2][2];
 
 
-		if(!tof_suc && vo_suc){
+		if(!tof_suc && vo_suc){   //tof不能用
 			std::cout<<" Keine Höhe schätzbar"<<std::endl;
 
 //			kalfi.update(pose_step);
@@ -487,7 +487,7 @@ int main(int argc, char** argv){
 		vector<std::int32_t> current_inliers = visoNew.getInlierIndices();
 
 		cv::cvtColor(Irgb_undist, Irgb_undist, cv::COLOR_GRAY2BGR);		//Grau->Farbbild, um Fluss zu visualisueren
-		ermittel_male_bewegung(Irgb_undist,all_last_matches, current_inliers);
+		ermittel_male_bewegung(Irgb_undist,all_last_matches, current_inliers); // optical flow
 
 		// Male eine Ebene und Normalenvektor in ein Bild
 		male_ebene_und_normalenvektor(Ivis, tof.getGroundplane(), camModel_tof, 175, 60, 2);
@@ -544,7 +544,7 @@ float calcAngle(T& vec1 , T& vec2){
 
 
 void ermittel_male_bewegung(const Mat &I,const vector<vector<Matcher::p_match> > &all_matches, const vector<std::int32_t> &inliers){
-
+// 求出optical flow并画出来
 	for (uint32_t i=0; i<all_matches.back().size(); i++){		//für alle matches vom letzten Frame
 
 		int32_t ii=i;
@@ -625,9 +625,9 @@ int32_t finde( vector<Matcher::p_match>  wo_ist,  int32_t das){
 
 
 void male_track(const Point p, Mat & Bild){
-
+// 用static静态变量，pp只初始化一次，第一次是一点，之后每次都在pp和pc之间连一条线（上一点和当前点）
 	static Point pp{0,0};
-	Point pc; pc.x=p.x+600; pc.y=p.y-400;
+	Point pc; pc.x=p.x+600; pc.y=p.y-400;  //为啥要+600，-400？？TODO
 	pc.y=-pc.y;
 
 	if(pp.x==0 && pp.y==0){
@@ -641,7 +641,7 @@ void male_track(const Point p, Mat & Bild){
 
 
 void male_ebene_und_normalenvektor(cv::Mat &I, const TofGround::planeHN &plane, const std::unique_ptr<CameraModel> &CamModel, int32_t u, int32_t v, double l,Scalar scal){
-
+// 在图中画出估计的平面和平面的垂直线
 	double n1 = plane.n(0);
 	double n2 = plane.n(1);
 	double n3 = plane.n(2);
