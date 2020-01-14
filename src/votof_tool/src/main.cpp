@@ -15,7 +15,7 @@
 #include <camera_models/camera_model.h>
 #include <calib_storage/calib_storage.h>
 #include "../include/votof_tool/viso_mono_new.hpp"
-#include <tof_groundplane_est/tof_groundplane_estimation.hpp>
+#include <tof_groundplane_est/tof_groundplane_estimation.hpp>  //  votof::TofGround来自这里
 #include "../include/votof_tool/est_homography.hpp"
 #include "../include/votof_tool/votof_filter.hpp"
 
@@ -257,13 +257,13 @@ int main(int argc, char** argv){
 		std::sprintf(matname, "_%05d-%05d", i, i-1);
 		matname_path = pfad2 + "convertMatrix/Affine_I" + matname + ".dat";
 
-		fs.open(bildTof, cv::FileStorage::READ);
+		fs.open(bildTof, cv::FileStorage::READ);   // 读取yaml file,没有的话就跳过
 		if (!fs.isOpened()){
 			std::cerr<<"Failed to open"<<std::endl;
 			break;
 		}
 		cv::Mat_<float> itof;
-		fs["depth"] >> itof;
+		fs["depth"] >> itof;  // 读取全部内容（一个对象，有各种属性），存进去itof
 		fs.release();
 
 		Ivis  = imread(bildVis, IMREAD_COLOR);
@@ -279,7 +279,7 @@ int main(int argc, char** argv){
 		int32_t k=0;
 		for(int32_t v=0; v<itof.rows; v++){
 			for(int32_t u=0; u<itof.cols; u++){
-				tof_data[k] = itof.at<float>(v,u);
+				tof_data[k] = itof.at<float>(v,u);   // tof_data是像素对应的深度信息，不过只有一行
 				k++;
 			}
 		}
@@ -386,7 +386,7 @@ int main(int argc, char** argv){
 
 //		n = kalfi.getState();
 
-
+        // 在灰度图上画时，需要更换坐标系，然后倒转过来，需要用上transformPlaneKos函数
 		temp.n = n;
 		temp.d = hoehe;
 
@@ -750,7 +750,7 @@ votof::TofGround::planeHN transformPlaneKos(const TofGround::planeHN &plane, Eig
 
 	TofGround::planeHN transPlane;
 	Eigen::Vector4d plane_vector(plane.n(0), plane.n(1), plane.n(2), -plane.d);
-	Eigen::Vector4d plane_trans = convMat * plane_vector;
+	Eigen::Vector4d plane_trans = convMat * plane_vector; // 变换坐标系
 
 	transPlane.n = plane_trans.head(3);
 	Eigen::Vector3d p(1,1,(-plane_trans(3)-plane_trans(0)-plane_trans(1))/plane_trans(2));
