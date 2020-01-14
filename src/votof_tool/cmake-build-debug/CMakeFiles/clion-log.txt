@@ -1,0 +1,20 @@
+/snap/clion/99/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /home/pandongwei/master-thesis-in-mrt/ground-estimation/src/votof_tool
+CMake Error at CMakeLists.txt:9 (find_package):
+  By not providing "Findmrt_cmake_modules.cmake" in CMAKE_MODULE_PATH this
+  project has asked CMake to find a package configuration file provided by
+  "mrt_cmake_modules", but CMake did not find one.
+
+  Could not find a package configuration file provided by "mrt_cmake_modules"
+  with any of the following names:
+
+    mrt_cmake_modulesConfig.cmake
+    mrt_cmake_modules-config.cmake
+
+  Add the installation prefix of "mrt_cmake_modules" to CMAKE_PREFIX_PATH or
+  set "mrt_cmake_modules_DIR" to a directory containing one of the above
+  files.  If "mrt_cmake_modules" provides a separate development package or
+  SDK, be sure it has been installed.
+
+
+-- Configuring incomplete, errors occurred!
+See also "/home/pandongwei/master-thesis-in-mrt/ground-estimation/src/votof_tool/cmake-build-debug/CMakeFiles/CMakeOutput.log".
