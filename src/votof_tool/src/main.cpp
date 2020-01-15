@@ -22,7 +22,7 @@
 using namespace cv;
 using namespace std;
 using namespace viso2;
-using namespace votof;
+using namespace votof;  // difference between this and tof_groundplane_estimation.hpp TODO
 
 //声明用到的函数。TofGround是一个class
 void ermittel_male_bewegung(const Mat &I,const vector<vector<Matcher::p_match> > &all_matches, const vector<std::int32_t> &inliers );
@@ -160,14 +160,14 @@ int main(int argc, char** argv){
 	cv::FileStorage fs;
 
 
-	// Tiefenschätzung parameter und konstruktor
+	// Tiefenschätzung parameter und konstruktor,这些参数用于估计地平面
 	TofGround::parameters param_tof;
 	param_tof.inlier_threshold = 0.001;
 	param_tof.ransac_iter = 500;
 	param_tof.bucket.bucket_height=25;
 	param_tof.bucket.bucket_width=25;
 	param_tof.bucket.max_features=50;
-	TofGround tof(param_tof, 352, 287);
+	TofGround tof(param_tof, 352, 287);  // TODO
 	tof.setROI();
 
 
@@ -468,7 +468,7 @@ int main(int argc, char** argv){
 
 		// Färbe alle Inliers Blau in TOF-Bilder
 		vector<int32_t> all_inliers = tof.getInlierList();
-		std::vector<TofGround::includepix> all_inroi = tof.getAllPxInRoi();
+		std::vector<TofGround::includepix> all_inroi = tof.getAllPxInRoi(); // returns all valid Pixel in ROI
 		for (uint32_t i=0; i<all_inliers.size(); i++){
 			Ivis.at<Vec3b>(Point(all_inroi[all_inliers[i]].u,all_inroi[all_inliers[i]].v)) = 255;
 		}
