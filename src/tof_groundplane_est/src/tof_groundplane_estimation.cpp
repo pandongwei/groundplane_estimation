@@ -25,7 +25,7 @@ bool TofGround::estimateGroundplane(float* I, std::unique_ptr<CameraModel>& CamM
 	applyROI(I);
 
     //Wenn weniger als x Punkte mit Tiefe return false
-    int32_t N = allPxInROI_.size();
+    int32_t N = allPxInROI_.size();  // N 为在ROI中的深度点数量
     if (N<6) {
     	std::cout<<"Not enough Points for estimate Groundplane"<<std::endl;
     	return false;
@@ -33,7 +33,7 @@ bool TofGround::estimateGroundplane(float* I, std::unique_ptr<CameraModel>& CamM
 
     // Bucket Pixel
     bucketPixel(param_.bucket.max_features,  param_.bucket.bucket_width, param_.bucket.bucket_height);
-    N = allPxInROI_.size();
+    N = allPxInROI_.size();  // allPxInROI_ ROI中所有的点
 
     if(use_min_number){
     	if(!enoughtPoints(N)){
@@ -47,7 +47,7 @@ bool TofGround::estimateGroundplane(float* I, std::unique_ptr<CameraModel>& CamM
     Y   = new float[N];
     Z   = new float[N];
 
-    for (int32_t i=0; i<N; i++) {
+    for (int32_t i=0; i<N; i++) { // 对每一点操作
 
     	float s=0;
         Eigen::Vector2d vector_uv(0,0);
@@ -64,19 +64,19 @@ bool TofGround::estimateGroundplane(float* I, std::unique_ptr<CameraModel>& CamM
     	X[i] = vector_xyz(0)+s*vector_xyz_direction(0);
     	Y[i] = vector_xyz(1)+s*vector_xyz_direction(1);
     }
-
+    // 这里用的是RANSAC方法，多次估计平面，选取最好的那个
     TofGround::planeHN cur_plane;
     for (int32_t k=0; k<param_.ransac_iter; k++) {
 
     	// draw random sample set
     	std::vector<int32_t> active = getRandomSample(N,3);
 
-    	// estimate plane matrix and get inliers
+    	// estimate plane matrix and get inliers TODO
     	cur_plane = getplane(active, X, Y, Z);
     	std::vector<int32_t> inliers_curr = getInlier(cur_plane, X, Y, Z, this->allPxInROI_.size());
 
     	// update model if we are better
-    	if (inliers_curr.size()>inliers_.size()){
+    	if (inliers_curr.size()>inliers_.size()){  // inlier的数量决定平面拟合的质量
     		this->inliers_ = inliers_curr;
     		this->ebeneHN_ = cur_plane;
     	}
@@ -229,7 +229,7 @@ bool TofGround::estimateGroundplane(float* I, bool use_min_number){
     	cur_plane = getplane(active, X, Y, Z);
     	std::vector<int32_t> inliers_curr = getInlier(cur_plane, X, Y, Z, this->allPxInROI_.size());
 
-    	// update model if we are better
+    	// update model if we are better，即inlier更多的时候
     	if (inliers_curr.size()>inliers_.size()){
     		this->inliers_ = inliers_curr;
     		this->ebeneHN_ = cur_plane;
@@ -255,14 +255,14 @@ bool TofGround::estimateGroundplane(float* I, bool use_min_number){
 }
 
 
-// Returns a Plane from three given Points
+// Returns a Plane from three given Points 随机抽取的三点，估计平面
 TofGround::planeHN TofGround::getplane(std::vector<int32_t> &active, float* X, float* Y, float* Z){
 
 //	TofGround::plane plane_temp;
 	TofGround::planeHN plane_temp2;
 	Eigen::Vector3d a, b, c;
 	Eigen::Vector3d n, nn;
-
+    // 三个点a,b,c
 	a(0) = X[active[0]];
 	a(1) = Y[active[0]];
 	a(2) = Z[active[0]];
@@ -275,15 +275,15 @@ TofGround::planeHN TofGround::getplane(std::vector<int32_t> &active, float* X, f
 	c(1) = Y[active[2]];
 	c(2) = Z[active[2]];
 
-	n = (b-a).cross((c-a));
-
+	n = (b-a).cross((c-a));  // vector3d.cross 叉乘
+    // n 为垂直于这三个点所形成平面的矢量
 	if(a.dot(n)>=0)
-		nn=n*(1/n.squaredNorm());
+		nn=n*(1/n.squaredNorm());  // squaredNorm 二范数,这里是要获得往上的归一化法向量
 	else
 		nn=(n*(1/n.squaredNorm()))*(-1);
 
 	plane_temp2.n = nn;
-	plane_temp2.d = a.dot(nn);
+	plane_temp2.d = a.dot(nn); // d 是坐标系到点a的水平距离
 
 	return plane_temp2;
 }
@@ -298,13 +298,13 @@ std::vector<int32_t> TofGround::getInlier(TofGround::planeHN cur_plane, float* X
 
 	for(int32_t i=0; i<N; i++){
 
-		if(Z[i] < 0.1)
+		if(Z[i] < 0.1) // 太近的点不要
 			continue;
 
 		x(0) = X[i];
 		x(1) = Y[i];
 		x(2) = Z[i];
-		d = distancePktPlane(cur_plane, x);
+		d = distancePktPlane(cur_plane, x); // 估计每个点与现在估计的平面的距离，小于阈值的话为inlier
 
 		if (abs(d)<=param_.inlier_threshold){
 			inl.push_back(i);
@@ -641,17 +641,17 @@ void TofGround::bucketPixelRandom(int32_t num){
 }
 
 bool TofGround::enoughtPoints(int32_t N){
-
+    // 点数量不够，就false
 	if (N < param_.min_Points_in_ROI)
 		return false;
-
+    // 判断统计有用的点
 	int32_t valid_buckets = 0;
 	for (std::vector<int>::iterator it = this->num_bucket_amout_.begin(); it != this->num_bucket_amout_.end(); it++){
 		if (*it >= param_.min_Points_in_bucket){
 			valid_buckets++;
 		}
 	}
-
+    // 有用的点数量也不够，就false
 	if (valid_buckets < param_.min_used_bucket)
 		return false;
 
