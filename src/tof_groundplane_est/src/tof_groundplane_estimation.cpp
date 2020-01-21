@@ -283,7 +283,7 @@ TofGround::planeHN TofGround::getplane(std::vector<int32_t> &active, float* X, f
 		nn=(n*(1/n.squaredNorm()))*(-1);
 
 	plane_temp2.n = nn;
-	plane_temp2.d = a.dot(nn); // d 是坐标系到点a的水平距离
+	plane_temp2.d = a.dot(nn); // d 是坐标系到点a的垂直距离
 
 	return plane_temp2;
 }
