@@ -248,7 +248,7 @@ int main(int argc, char** argv){
 		tstartbilder = clock();
 
 
-		// Bilder Einlesen
+		// Bilder Einlesen读取图片
 		sprintf(bildnummer,"_%05d", i);
 		bildTof  = 	pfad2 + "D"  + bildnummer + ".yaml";
 		bildVis  = 	pfad2 + "DV" + bildnummer + ".png";
@@ -301,7 +301,7 @@ int main(int argc, char** argv){
 
 
 		int32_t dimsRGB[] = {Irgb_undist.cols, Irgb_undist.rows, Irgb_undist.cols};
-
+        // 不懂 TODO
 		viso2::Matrix n_viso(3,1);
 		for(int32_t i=0; i<3; i++){
 			n_viso.val[i][0]=n_previous(i);
@@ -379,6 +379,7 @@ int main(int argc, char** argv){
 //				hoehe = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).d;
 //				kalfi.update(n_akt, pose_step);
 //			}
+            // 这里是什么情况？ TODO
 			n = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).n;
 			hoehe = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).d;
 
@@ -390,6 +391,7 @@ int main(int argc, char** argv){
 		temp.n = n;
 		temp.d = hoehe;
 
+		// 所有情况已经列出来了，下一步是把结果画在图上
 		std::cout<<"start printing"<<std::endl;
 		viso2::Matrix saveMat(4,4);
 		saveMat.eye();
@@ -479,7 +481,7 @@ int main(int argc, char** argv){
 			all_last_matches.push_back(current_matches);
 
 		if(all_last_matches.size()>2){
-			all_last_matches.erase(all_last_matches.begin());
+			all_last_matches.erase(all_last_matches.begin()); // 大于2时就删去前面那个，保证只有一个
 		}
 		//TODOENDE
 
