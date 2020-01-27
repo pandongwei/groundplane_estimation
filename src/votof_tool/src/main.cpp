@@ -9,7 +9,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <viso2/matrix.h>
-#include <viso2/viso.h>
+#include <viso2/viso.h>   // visoNew的一些函数也在这里
 #include <eigen3/Eigen/Dense>
 #include <storage_container/storage_container.h>
 #include <camera_models/camera_model.h>
@@ -309,13 +309,13 @@ int main(int argc, char** argv){
 
 		bool vo_suc = visoNew.process(Irgb_undist.data, dimsRGB, n_viso, h_previous); // 判断是否用VO
 
-		if (vo_suc){		// VO,这里决定是否要用到VO
+		if (vo_suc){		// VO,这里决定是否能用到VO来画轨迹图
 
 			cout<<" *** New Pose ***"<<endl;
 			poseVO = poseVO * Matrix::inv(visoNew.getMotion());
 
 			Eigen::Vector3d n_temp;
-			Eigen::Matrix3d pose_temp;
+			Eigen::Matrix3d pose_temp; // 3d transformation 4*4 matrix
 			pose_temp(0,0)=poseVO.val[0][0];	pose_temp(0,1)=poseVO.val[0][1];	pose_temp(0,2)=poseVO.val[0][2];
 			pose_temp(1,0)=poseVO.val[1][0];	pose_temp(1,1)=poseVO.val[1][1];	pose_temp(1,2)=poseVO.val[1][2];
 			pose_temp(2,0)=poseVO.val[2][0];	pose_temp(2,1)=poseVO.val[2][1];	pose_temp(2,2)=poseVO.val[2][2];
@@ -330,7 +330,7 @@ int main(int argc, char** argv){
 			male_track(p, wegVO);
 
 		}
-		if(!first)  //从第二帧开始计算
+		if(!first)  //从第二帧开始,将每一帧的translation写出到all_pos指定的文件中
 			all_pos<<i<<" "<<poseVO.val[0][3]<<" "<<poseVO.val[1][3]<<" "<<poseVO.val[2][3]<<std::endl;
 
 
