@@ -31,7 +31,7 @@ void male_track(const Point p, Mat & Bild);
 void male_ebene_und_normalenvektor(cv::Mat &I, const TofGround::planeHN &plane, const std::unique_ptr<CameraModel>& CamModel, int32_t u, int32_t v, double l,Scalar scal=0);
 votof::TofGround::planeHN transformPlaneKos(const TofGround::planeHN &plane, Eigen::Affine3d& convMat);
 viso2::Matrix correctPose (const viso2::Matrix& tr, Eigen::Vector3d n_akt, Eigen::Vector3d n_pre);
-
+void imshowMany(const string winName, const vector<Mat>imgs);//定义一个函数用于多图像显示
 template <typename T>
 float calcAngle(T& vec1 , T& vec2);
 
@@ -238,7 +238,7 @@ int main(int argc, char** argv){
 
 	all_pos<<"Img.-Nr: | X | Y | Z"<<std::endl;
 
-	for (int i=7; i>-1 ; i++){
+	for (int i=100; i>-1 ; i++){
 
 		cout<<"****************************"<<endl;
 		cout<<"Bild Nr.: "<<i<<endl;
@@ -284,7 +284,7 @@ int main(int argc, char** argv){
 			}
 		}
 
-		if(first){  //第一帧的话要额外输出temp
+		if(first){  // 必须要用tof获得第一个估计的平面，才可以后续使用VO修正。a good initial groundplane estimation is very important
 			bool tof_suc2 = tof.estimateGroundplane(tof_data, camModel_tof);
 			if(tof_suc2){
 				neins = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).n;
@@ -306,23 +306,24 @@ int main(int argc, char** argv){
 		for(int32_t i=0; i<3; i++){
 			n_viso.val[i][0]=n_previous(i);
 		}
-
-		bool vo_suc = visoNew.process(Irgb_undist.data, dimsRGB, n_viso, h_previous); // 判断是否用VO
+        // 这个函数就是计算整个VO的
+		bool vo_suc = visoNew.process(Irgb_undist.data, dimsRGB, n_viso, h_previous);
 
 		if (vo_suc){		// VO,这里决定是否能用到VO来画轨迹图
 
 			cout<<" *** New Pose ***"<<endl;
-			poseVO = poseVO * Matrix::inv(visoNew.getMotion());
-
+			// motion是相邻两帧的相对运动T, poseVO是绝对位姿，从第一帧到当前帧
+			poseVO = poseVO * Matrix::inv(visoNew.getMotion()); // 1~t = 1~t-1 * t-1~t
+            // 在VO中，由于单目，所以并不知道尺度大小，只知道方向信息，需要tof的结果来帮助VO获取尺度信息
 			Eigen::Vector3d n_temp;
-			Eigen::Matrix3d pose_temp; // 3d transformation 4*4 matrix
+			Eigen::Matrix3d pose_temp; // 3d transformation 4*4 matrix, 这里只是矩阵转换到Eigen形式
 			pose_temp(0,0)=poseVO.val[0][0];	pose_temp(0,1)=poseVO.val[0][1];	pose_temp(0,2)=poseVO.val[0][2];
 			pose_temp(1,0)=poseVO.val[1][0];	pose_temp(1,1)=poseVO.val[1][1];	pose_temp(1,2)=poseVO.val[1][2];
 			pose_temp(2,0)=poseVO.val[2][0];	pose_temp(2,1)=poseVO.val[2][1];	pose_temp(2,2)=poseVO.val[2][2];
 
 			n_temp = pose_temp * n_previous;
-			poseVO = correctPose(poseVO, n_temp, neins);
-
+			poseVO = correctPose(poseVO, n_temp, neins); // 用tof估计地平面的结果，来修正因为VO所积累的transformation的误差
+            // 这里的修正是利用估计的平面方向，经过poseVO转换之后，方向应该与第一帧的平面方向一致，但是实际上会有累计的角度误差，消除这个误差
 			// Male den Weg 画轨迹图，就是把计算出来的点变成白色
 			cv::Point p;
 			p.x=(poseVO.val[0][3]);
@@ -339,12 +340,12 @@ int main(int argc, char** argv){
 		double h_akt;
 		bool tof_suc = tof.estimateGroundplane(tof_data, camModel_tof);
 		TofGround::planeHN temp;
-		if(tof_suc && !first){ //使用tof计算
+		if(tof_suc && !first){ //使用tof计算新的平面估计
 			n_akt = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).n;
 			h_akt = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).d;
 
 			tof_suc = planeCheckBetweenImage.planeCheck(n_previous, h_previous, n_akt, h_akt);
-			if(!tof_suc)
+			if(!tof_suc) // 检查前后两帧平面的角度，如果估计的平面转向太大，则认为估计失败，将平面初始化为一开始的平面
 				tof_suc = planeCheckFromStart.planeCheck(neins, heins , n_akt, h_akt);
 		}
 
@@ -355,12 +356,12 @@ int main(int argc, char** argv){
 		pose_step(2,0)=poseVO.val[2][0];	pose_step(2,1)=poseVO.val[2][1];	pose_step(2,2)=poseVO.val[2][2];
 
 
-		if(!tof_suc && vo_suc){   //tof不能用
+		if(!tof_suc && vo_suc){   //tof不能用时，用VO来更新平面估计
 			std::cout<<" Keine Höhe schätzbar"<<std::endl;
 
 //			kalfi.update(pose_step);
-			n = pose_step * n_previous;
-			hoehe = h_previous;
+			n = pose_step * n_previous; // GPt = GPt-1 * T
+			hoehe = h_previous; // 不改变绝对距离
 
 		}else{
 //			if(tof_suc && vo_suc){
@@ -379,9 +380,11 @@ int main(int argc, char** argv){
 //				hoehe = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).d;
 //				kalfi.update(n_akt, pose_step);
 //			}
-            // 这里是什么情况？ TODO
-			n = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).n;
-			hoehe = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).d;
+            // 如果两者都不能用，则保持估计的平面不变
+//			n = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).n;
+//			hoehe = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).d;
+			n=n_previous;
+			h=hoehe;
 
 		}
 
@@ -498,13 +501,18 @@ int main(int argc, char** argv){
 		// Vergrößer TOF Bilder
 		cv::resize(Ivis, Ivis, cv::Size(), 2, 2);
 
-
+        vector<Mat> imgs(4);
+        imgs[0] = wegVO;
+        imgs[1] = Ivis;
+        imgs[2] = Irgb;
+        imgs[3] = Irgb_undist;
+        imshowMany("Multiple images",imgs);
 		//Zeige Bilder an
-		imshow("Weg", wegVO);
-		imshow("Tof-Tiefenbild", Ivis);
-		imshow("Farbkamera dist.", Irgb);
-		imshow("Farbkamera undist.", Irgb_undist);
-		waitKey(2);
+		//imshow("Weg", wegVO);
+		//imshow("Tof-Tiefenbild", Ivis);
+		//imshow("Farbkamera dist.", Irgb);
+		//imshow("Farbkamera undist.", Irgb_undist);
+		//waitKey(2);
 
 		// gibt eservierten Speicher frei,释放内存
 		free(tof_data);
@@ -532,6 +540,69 @@ int main(int argc, char** argv){
 // ********************
 // **** FUNKTIONEN ****
 // ********************
+
+void imshowMany(const string winName, const vector<Mat>imgs)
+{
+    int nImg = (int)imgs.size();//imgs个数
+    Mat dispImg;
+    int size;
+    int x, y;
+    int w, h;//每行最多显示w张图片,每列最多显示h张图片
+    float scale;// scale - How much we have to resize the image
+    int max;
+    if (nImg <= 0)
+    {
+        printf("Number of arguments too small....\n");
+        return;
+    }
+    else if (nImg > 6)
+    {
+        printf("Number of arguments too large....\n");
+        return;
+    }   //最多显示12副图
+
+    else if (nImg == 1)
+    {
+        w = h = 1;
+        size = 300;
+    }//一行一列
+    else if (nImg == 2)
+    {
+        w = 2; h = 1;
+        size = 300;
+    }//一行两列
+    else if (nImg == 3 || nImg == 4)
+    {
+        w = 2; h = 2;
+        size = 500;
+    }//两行两列
+    else if (nImg == 5 || nImg == 6)
+    {
+        w = 3; h = 2;
+        size = 200;
+    }//两行三列
+
+
+    dispImg.create(Size(80+size*w, 60+size*h), CV_8UC3);//创建一个新的三通道的窗口
+    for (int i = 0, m = 20, n = 20; i<nImg; i++, m += (20 + size))//m,n为坐标点，20为每幅图间距
+    {
+        x = imgs[i].cols;
+        y = imgs[i].rows;
+        max = (x > y) ? x : y;
+        scale = (float)((float)max / size);//获取第i幅图像与规定size的比例
+        if (i%w == 0 && m != 20)
+        {
+            m = 20;
+            n += 20 + size;
+        }
+
+        Mat imgROI = dispImg(Rect(m, n, (int)(x / scale), (int)(y / scale)));//选取感兴趣区域
+        resize(imgs[i], imgROI, Size((int)(x / scale), (int)(y / scale)));//图像缩放
+    }
+    //namedWindow(winName);
+    imshow(winName, dispImg);
+    waitKey(2);
+}
 
 
 template <typename T>
