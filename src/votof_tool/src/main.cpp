@@ -5,6 +5,7 @@
  */
 
 //#include "../../../src/gnuplot-iostream/gnuplot-iostream.h"
+#include <string>
 #include <fstream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -157,6 +158,7 @@ int main(int argc, char** argv){
 	char bildnummer[256];
 	Mat Ivis;
 	Mat Irgb;
+	Mat Irgb_ori;
 	cv::FileStorage fs;
 
 
@@ -238,7 +240,7 @@ int main(int argc, char** argv){
 
 	all_pos<<"Img.-Nr: | X | Y | Z"<<std::endl;
 
-	for (int i=100; i>-1 ; i++){
+	for (int i=400; i>-1 ; i++){
 
 		cout<<"****************************"<<endl;
 		cout<<"Bild Nr.: "<<i<<endl;
@@ -268,6 +270,7 @@ int main(int argc, char** argv){
 
 		Ivis  = imread(bildVis, IMREAD_COLOR);
 		Irgb  = imread(bildRGB, IMREAD_GRAYSCALE);
+        Irgb_ori = imread(bildRGB, IMREAD_COLOR);
 
 		//undistort Rgb-Image
 		cv::remap(Irgb, Irgb_undist, mapPix_cam, mapSubPix_cam, cv::INTER_LINEAR, cv::BORDER_CONSTANT, 0);
@@ -381,10 +384,10 @@ int main(int argc, char** argv){
 //				kalfi.update(n_akt, pose_step);
 //			}
             // 如果两者都不能用，则保持估计的平面不变
-//			n = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).n;
-//			hoehe = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).d;
-			n=n_previous;
-			h=hoehe;
+			n = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).n;
+			hoehe = transformPlaneKos(tof.getGroundplane(), tof_to_cam_mat).d;
+//			n = n_previous;
+//            hoehe = h_previous;
 
 		}
 
@@ -492,20 +495,23 @@ int main(int argc, char** argv){
 		vector<std::int32_t> current_inliers = visoNew.getInlierIndices();
 
 		cv::cvtColor(Irgb_undist, Irgb_undist, cv::COLOR_GRAY2BGR);		//Grau->Farbbild, um Fluss zu visualisueren
-		ermittel_male_bewegung(Irgb_undist,all_last_matches, current_inliers); // optical flow
-
+		//ermittel_male_bewegung(Irgb_undist,all_last_matches, current_inliers); // optical flow
+        ermittel_male_bewegung(Irgb_ori,all_last_matches, current_inliers);
 		// Male eine Ebene und Normalenvektor in ein Bild
-		male_ebene_und_normalenvektor(Ivis, tof.getGroundplane(), camModel_tof, 175, 60, 2);
-		male_ebene_und_normalenvektor(Irgb_undist, temp, camModel_cam, 500, 370, 2);
-
+		//male_ebene_und_normalenvektor(Ivis, tof.getGroundplane(), camModel_tof, 175, 60, 2);
+		//male_ebene_und_normalenvektor(Irgb_undist, temp, camModel_cam, 500, 370, 2);
+        male_ebene_und_normalenvektor(Irgb_ori, temp, camModel_cam, 500, 370, 2);  //在彩色图上画结果
+        std::string str = "FPS:  ";
+        std::string fps = to_string(1/time1);
+        //_gcvt_s(fps, sizeof(fps),1/time1,3);
+        putText(Irgb_ori, str + fps, Point2f(100,50), FONT_HERSHEY_PLAIN, 3,  Scalar(0,0,255,0), 3);
+        //putText(Irgb_ori, " detection time", Point2f(50,100), FONT_HERSHEY_PLAIN, 3,  Scalar(0,255,255,255), 3);
 		// Vergrößer TOF Bilder
 		cv::resize(Ivis, Ivis, cv::Size(), 2, 2);
 
-        vector<Mat> imgs(4);
-        imgs[0] = wegVO;
-        imgs[1] = Ivis;
-        imgs[2] = Irgb;
-        imgs[3] = Irgb_undist;
+        vector<Mat> imgs(2);
+        imgs[0] = Irgb_ori;
+        imgs[1] = wegVO;
         imshowMany("Multiple images",imgs);
 		//Zeige Bilder an
 		//imshow("Weg", wegVO);
@@ -568,8 +574,8 @@ void imshowMany(const string winName, const vector<Mat>imgs)
     }//一行一列
     else if (nImg == 2)
     {
-        w = 2; h = 1;
-        size = 300;
+        w = 1; h = 2;
+        size = 800;
     }//一行两列
     else if (nImg == 3 || nImg == 4)
     {
@@ -583,7 +589,8 @@ void imshowMany(const string winName, const vector<Mat>imgs)
     }//两行三列
 
 
-    dispImg.create(Size(80+size*w, 60+size*h), CV_8UC3);//创建一个新的三通道的窗口
+    dispImg.create(Size(80+size*w, size*h-200), CV_8UC3);//创建一个新的三通道的窗口CV_8UC3
+    dispImg.setTo(cv::Scalar::all(0));
     for (int i = 0, m = 20, n = 20; i<nImg; i++, m += (20 + size))//m,n为坐标点，20为每幅图间距
     {
         x = imgs[i].cols;
@@ -593,7 +600,7 @@ void imshowMany(const string winName, const vector<Mat>imgs)
         if (i%w == 0 && m != 20)
         {
             m = 20;
-            n += 20 + size;
+            n += 20 + 400;
         }
 
         Mat imgROI = dispImg(Rect(m, n, (int)(x / scale), (int)(y / scale)));//选取感兴趣区域
