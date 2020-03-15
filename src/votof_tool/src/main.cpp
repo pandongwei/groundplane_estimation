@@ -32,7 +32,7 @@ void male_track(const Point p, Mat & Bild);
 void male_ebene_und_normalenvektor(cv::Mat &I, const TofGround::planeHN &plane, const std::unique_ptr<CameraModel>& CamModel, int32_t u, int32_t v, double l,Scalar scal=0);
 votof::TofGround::planeHN transformPlaneKos(const TofGround::planeHN &plane, Eigen::Affine3d& convMat);
 viso2::Matrix correctPose (const viso2::Matrix& tr, Eigen::Vector3d n_akt, Eigen::Vector3d n_pre);
-void imshowMany(const string winName, const vector<Mat>imgs);//定义一个函数用于多图像显示
+void imshowMany(const string winName, const vector<Mat>imgs, VideoWriter video);//定义一个函数用于多图像显示
 template <typename T>
 float calcAngle(T& vec1 , T& vec2);
 
@@ -216,7 +216,7 @@ int main(int argc, char** argv){
 
 	//Fenster um den Weg darzustellen
 	cv::Mat wegVO;
-	wegVO = Mat::zeros(600, 1200, CV_8UC3);
+	wegVO = Mat::zeros(540, 1024, CV_8UC3);
 
 
 	//spichert gemessene Ebene von vorherigem Frame
@@ -239,7 +239,7 @@ int main(int argc, char** argv){
 	planeCheckfunc planeCheckFromStart(planeCheckfunc::functionTyp::fromInitialPlane);
 
 	all_pos<<"Img.-Nr: | X | Y | Z"<<std::endl;
-
+    VideoWriter video("/home/pan/master-thesis-in-mrt/ground-estimation/outcpp.avi",CV_FOURCC('M','J','P','G'),15, Size(512,540));
 	for (int i=400; i>-1 ; i++){
 
 		cout<<"****************************"<<endl;
@@ -512,7 +512,10 @@ int main(int argc, char** argv){
         vector<Mat> imgs(2);
         imgs[0] = Irgb_ori;
         imgs[1] = wegVO;
-        imshowMany("Multiple images",imgs);
+        //cout<< imgs[0].cols<<' '<< imgs[0].rows<<endl;
+        //cout<< imgs[1].cols<<' '<< imgs[1].rows<<endl;
+
+        imshowMany("Multiple images",imgs, video);
 		//Zeige Bilder an
 		//imshow("Weg", wegVO);
 		//imshow("Tof-Tiefenbild", Ivis);
@@ -547,66 +550,20 @@ int main(int argc, char** argv){
 // **** FUNKTIONEN ****
 // ********************
 
-void imshowMany(const string winName, const vector<Mat>imgs)
+void imshowMany(const string winName, const vector<Mat>imgs, VideoWriter video)
 {
-    int nImg = (int)imgs.size();//imgs个数
     Mat dispImg;
-    int size;
-    int x, y;
-    int w, h;//每行最多显示w张图片,每列最多显示h张图片
-    float scale;// scale - How much we have to resize the image
-    int max;
-    if (nImg <= 0)
-    {
-        printf("Number of arguments too small....\n");
-        return;
-    }
-    else if (nImg > 6)
-    {
-        printf("Number of arguments too large....\n");
-        return;
-    }   //最多显示12副图
 
-    else if (nImg == 1)
-    {
-        w = h = 1;
-        size = 300;
-    }//一行一列
-    else if (nImg == 2)
-    {
-        w = 1; h = 2;
-        size = 800;
-    }//一行两列
-    else if (nImg == 3 || nImg == 4)
-    {
-        w = 2; h = 2;
-        size = 500;
-    }//两行两列
-    else if (nImg == 5 || nImg == 6)
-    {
-        w = 3; h = 2;
-        size = 200;
-    }//两行三列
-
-
-    dispImg.create(Size(80+size*w, size*h-200), CV_8UC3);//创建一个新的三通道的窗口CV_8UC3
+    dispImg.create(Size(512, 540), CV_8UC3);//创建一个新的三通道的窗口CV_8UC3
     dispImg.setTo(cv::Scalar::all(0));
-    for (int i = 0, m = 20, n = 20; i<nImg; i++, m += (20 + size))//m,n为坐标点，20为每幅图间距
-    {
-        x = imgs[i].cols;
-        y = imgs[i].rows;
-        max = (x > y) ? x : y;
-        scale = (float)((float)max / size);//获取第i幅图像与规定size的比例
-        if (i%w == 0 && m != 20)
-        {
-            m = 20;
-            n += 20 + 400;
-        }
 
-        Mat imgROI = dispImg(Rect(m, n, (int)(x / scale), (int)(y / scale)));//选取感兴趣区域
-        resize(imgs[i], imgROI, Size((int)(x / scale), (int)(y / scale)));//图像缩放
-    }
+    Mat imgROI_1 = dispImg(Rect(0, 0, 512, 270));//选取感兴趣区域
+    Mat imgROI_2 = dispImg(Rect(0, 270, 512, 270));
+    resize(imgs[0], imgROI_1, Size(512, 270));//图像缩放
+    resize(imgs[1], imgROI_2, Size(512, 270));//图像缩放
+
     //namedWindow(winName);
+    video.write(dispImg);
     imshow(winName, dispImg);
     waitKey(2);
 }
