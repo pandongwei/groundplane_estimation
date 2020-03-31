@@ -1,0 +1,10 @@
+<launch>
+	<arg name="pic_path"   default="/media/pan/Extreme\ SSD/mrt-storage/dataset_rgb_depth/30.07-2/" />
+	
+	<arg name="calib_path" default="$(find votof_tool)/../../calibration.bin" />
+	<arg name="node_rgb"   default="cam" />
+	<arg name="node_tof"   default="tov" />
+
+	<node pkg="votof_tool" type="votof_tool" name="votof_tool" output="screen" args="$(arg pic_path) $(arg calib_path) $(arg node_rgb) $(arg node_tof)" />
+
+</launch>

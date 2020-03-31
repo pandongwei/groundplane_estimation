@@ -1,0 +1,14 @@
+
+Ausführen des Prgramms duch: 
+	roslaunch votof.launch
+
+
+Funktioniert ohne Argumentübergabe, wenn die Bilder in einem Ordner 'pictures' im Workspace sind und die calibResultMap.bin in dem Ordner 'calib_result' ist.
+
+Argumente, die an votof.launch übergeben werden können:
+	
+	pic_path:=...		default: Ordner "pictures" im Workspace (absoluter Pfad zu dem Ordner mit den Bildern)
+	calib_path:= ... 	default: Ordner "calib_result/calibResultMap.bin" im Workspace (absoluter Pfad zu der calibResultMap.bin)
+	node_rgb:= ...		default: cam	(name der Farbkamera in der calibResultMap.bin)
+	node_tof:= ...		default: tov 	(name der Tof-Kamera in der calibResultMap.bin)
+
